@@ -16,12 +16,12 @@
 
 <LinearLayout
         xmlns:android="http://schemas.android.com/apk/res/android"
-        xmlns:custom="http://schemas.android.com/apk/res/com.example.android.customviews"
+        xmlns:custom="http://schemas.android.com/apk/res/com.nennig.life.wheel"
         android:orientation="vertical"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         >
-    <com.example.android.customviews.charting.PieChart
+    <com.nennig.life.wheel.charting.PieChart
             android:id="@+id/Pie"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
