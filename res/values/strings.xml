@@ -15,7 +15,7 @@
 -->
 
 <resources>
-    <string name="app_name">CustomViews</string>
+    <string name="app_name">LifeWheel</string>
     <string name="reset_button">Reset</string>
     <string name="delete_button">Delete</string>
     <string name="add_button">Add</string>

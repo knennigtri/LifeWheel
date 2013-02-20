@@ -105,7 +105,10 @@ public class MainActivity extends Activity {
             public void onClick(View view) {
             	Slice s = new Slice(lifeType, scaleValue);
             	if(itemList.contains(s)){
-            		pie.removeItem(s.label);
+            		if(itemList.size() == 1)
+            			Toast.makeText(MainActivity.this, "Cannot delete last slice of the wheel", Toast.LENGTH_SHORT).show();
+            		else
+            			pie.removeItem(s.label);	
             	}
             	else
             	{
