@@ -83,7 +83,6 @@ public class PieChart extends ViewGroup {
     private RectF mShadowBounds = new RectF();
 
     //Custom Variables to make my version work!
-    private int cSliceCount;
     private Paint cSlicePaint;
     
     /**
@@ -106,7 +105,7 @@ public class PieChart extends ViewGroup {
      */
     public static final int AUTOCENTER_ANIM_DURATION = 250;
 
-	private static final String TAG = "PieChart Main";
+	private static final String TAG = "lifewheel.PieChart";
 	private static final String NO_DATA_SLICE = "LifeWheel";
     /**
      * Interface definition for a callback to be invoked when the current
@@ -409,6 +408,14 @@ public class PieChart extends ViewGroup {
     	return addItem(item.mLabel, item.cPercent, item.cSliceColor, item.mItemColor);
     }
     
+    //This allows the user only to add the label and the percent of the slice. The colors are auto generated.
+    public int addItem(String label, float val){
+    	return addItem(label, 
+    			PieConstants.getSliceItemPercentage(val),
+    			PieConstants.getSliceColor(getResources(), label), 
+    			PieConstants.getItemColor(getResources(), label));
+    }
+    
     /**
      * Add a new data item to this view. Adding an item adds a slice to the pie whose
      * size is proportional to the item's value. As new items are added, the size of each
@@ -420,13 +427,46 @@ public class PieChart extends ViewGroup {
      * @return The index of the newly added item.
      */
     public int addItem(String label, float percent, int sliceColor, int itemColor) {
-        Item it = new Item();
+        Item it = createItem(label, percent, sliceColor, itemColor);
+        mData.add(it);
+        //TODO 0 Slices
+        //Removes the default Slice
+//        if(mData.get(0).mLabel.equals(NO_DATA_SLICE))
+//        		mData.remove(0);
+        
+        onDataChanged();
+        return mData.size() - 1;
+    }
+    
+    //If the label is found, then the slice is updated, otherwise error -1
+    public int updateItem(String label, float val){
+    	for(Item it : mData){
+    		if(it.mLabel.equals(label)){
+    			int index = mData.indexOf(it);
+    			mData.remove(it);
+    			mData.add(index, createItem(label, val));
+    			onDataChanged();
+    			return 1;
+    		}
+    	}
+    	return -1;
+    }
+    
+    private Item createItem(String label, float val){
+    	return createItem(label, 
+    			PieConstants.getSliceItemPercentage(val),
+    			PieConstants.getSliceColor(getResources(), label), 
+    			PieConstants.getItemColor(getResources(), label));
+    }
+    
+    private Item createItem(String label, float percent, int sliceColor, int itemColor){
+    	Item it = new Item();
         it.mLabel = label;
         it.mItemColor = itemColor;
         it.cSliceColor = sliceColor;
         it.cPercent = percent;
 //        Log.d(TAG, "Percent for "+it.mLabel+": "+it.cPercent);
-        cSliceCount++;
+
 
         // Calculate the highlight color. Saturate at 0xff to make sure that high values
         // don't result in aliasing.
@@ -449,16 +489,8 @@ public class PieChart extends ViewGroup {
     	float itemW = (mPieBounds.width() / 2) * it.cPercent;
     	float itemH = (mPieBounds.height() / 2) * it.cPercent;
     	it.cSliceBounds = new RectF(centerX - itemW,centerY - itemH, centerX + itemW, centerY + itemH);
-        
-        mData.add(it);
-
-        //TODO 0 Slices
-        //Removes the default Slice
-//        if(mData.get(0).mLabel.equals(NO_DATA_SLICE))
-//        		mData.remove(0);
-        
-        onDataChanged();
-        return mData.size() - 1;
+    	
+    	return it;
     }
 
     /**
@@ -467,29 +499,13 @@ public class PieChart extends ViewGroup {
      * @return returns the new size of the wheel or -1 if the item was not found
      */
     public int removeItem(String label) {
-        cSliceCount--;
-        
-        int i = 0, index = -1;
-        for(Item it : mData){
-        	if(it.mLabel.equals(label))
-        	{
-        		index = i;
-        		break;
-        	}
-        	i++;
-        		
-        }
-        
-        if(index != -1)
-        {
-        	mData.remove(index);
-        	onDataChanged();
-            return mData.size() - 1;
-        }
-        else
-        {
-        	return -1;
-        }
+    	Item it = createItem(label, 0);
+    	if(mData.contains(it)){
+    		mData.remove(it);
+    		onDataChanged();
+    		return mData.size() - 1;
+    	}
+    	return -1;
     }
     
     /**
@@ -505,7 +521,7 @@ public class PieChart extends ViewGroup {
     @Override
     public boolean onTouchEvent(MotionEvent event) {
     	//TODO 0 Slices
-//       if(cSliceCount < 1)
+//       if(mData.size() < 1)
 //    	   return false;
     	
     	// Let the GestureDetector interpret this event
@@ -541,7 +557,7 @@ public class PieChart extends ViewGroup {
 
         //TODO 0 Slices
         String label = "";
-//        if(cSliceCount > 0)
+//        if(mData.size() > 0)
         	label = mData.get(mCurrentItem).mLabel;
 //        else
 //        	label = NO_DATA_SLICE;
@@ -595,8 +611,8 @@ public class PieChart extends ViewGroup {
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
-        Log.d(TAG, "Slice Count: " + cSliceCount);
-        if(cSliceCount > 0)
+        Log.d(TAG, "Slice Count: " + mData.size());
+        if(mData.size() > 0)
         {
 	        //
 	        // Set dimensions for text, pie chart, etc
@@ -689,9 +705,9 @@ public class PieChart extends ViewGroup {
      * Do all of the recalculations needed when the data array changes.
      */
     private void onDataChanged() {
-    	int angle = 360 / cSliceCount;
+    	int angle = 360 / mData.size();
     	//This is the extra degrees that cannot be equally divided by the number of sides
-    	int extra = 360 % cSliceCount;
+    	int extra = 360 % mData.size();
     	
         // When the data changes, we have to recalculate
         // all of the angles.
@@ -849,8 +865,6 @@ public class PieChart extends ViewGroup {
         // you can't scroll for a bit, pause, then scroll some more (the pause is interpreted
         // as a long press, apparently)
         mDetector.setIsLongpressEnabled(false);
-        
-        cSliceCount = 0;
     }
 
     private void tickScrollAnimation() {
@@ -980,94 +994,7 @@ public class PieChart extends ViewGroup {
                         it.mEndAngle - it.mStartAngle,
                         true, cSlicePaint);
 //                Log.d(TAG, "StartAngle> "+it.mStartAngle+" EndAngle> "+it.mEndAngle);
-            }
-            
-//            
-//            Paint paint = new Paint();
-//   			paint.setColor(Color.BLACK);
-//   			paint.setTextSize(30f);
-//   			
-//   			int scaleTop = 10;
-//   			int scaleBottom = 0;
-//   			
-//   			//Dynamic Variables
-//   			float pieSlices = 6;
-//   			float scaleSliceFill = 3;
-//   			float scaleSliceFillArr[] = {3,4,5,6,7,8};
-//   			int sliceColor[] = {Color.BLACK,Color.BLUE,Color.CYAN,Color.GRAY,Color.GREEN,Color.RED};   			
-//   			String params = "pie: " + pieSlices;
-//            canvas.drawText(params, 20, 20, paint);   
-//   			
-//            
-//   			
-//   			int radius, h,k;
-//			
-//   			radius = 100;//(displayWidth/2) - 40;
-//   			h = 0;//displayWidth / 2;
-//   			k = 0;//displayHeight /2;
-//   			Log.d(TAG, "h,k: " + h +"," +k);
-//   			
-//			canvas.drawCircle(h, k, radius, paint);
-//			
-//			
-//			paint.setColor(Color.WHITE);
-//			canvas.drawCircle(h, k, radius-2, paint);
-//			
-//			paint.setColor(Color.BLACK);
-//			
-//			float curSliceRadius = 0;
-//			Log.d(TAG, "curSliceRadius: " + curSliceRadius);
-//			
-//			float angle = 360 / pieSlices;
-//			float curDegrees = 0, nextDegrees = angle;
-//			float curSliceX = 0, curSliceY = 0, nextSliceX = 0, nextSliceY = 0;
-////					prevSliceX = 0, prevSliceY = 0;
-//			
-//			Log.d(TAG, "Degrees cur:next>> "+ curDegrees+":"+nextDegrees);
-//			int i = 0;
-//			while(curDegrees < 360){
-//				Log.d(TAG, "ANGLE>> " + curDegrees);
-//				float curRadians = (float) (curDegrees * Math.PI) / 180;
-//				float nextRadians = (float) (nextDegrees * Math.PI) / 180;
-//				Log.d(TAG, "Radians cur:next>> "+ curRadians/Math.PI+"p:"+nextRadians/Math.PI+"p");
-//				
-//				float lineX = (float) (h + radius * Math.cos(curRadians));
-//				float lineY = (float) (k + radius * Math.sin(curRadians));;
-//				canvas.drawLine(h, k, lineX, lineY, paint);
-////				
-////				curSliceRadius = (scaleSliceFillArr[i] / scaleTop) * radius;
-////				curSliceX = (float) (h + curSliceRadius * Math.cos(curRadians));
-////				curSliceY = (float) (k + curSliceRadius * Math.sin(curRadians));
-////				nextSliceX = (float) (h + curSliceRadius * Math.cos(nextRadians));
-////				nextSliceY = (float) (k + curSliceRadius * Math.sin(nextRadians));
-////				
-////				Log.d(TAG, "curSlice x,y: " + curSliceX +"," +curSliceY);
-////				Log.d(TAG, "nextSlice x,y: " + nextSliceX +"," +nextSliceY);
-////				RectF oval = new RectF();
-////
-////				float startAngle = getSemicircle(h, k, curSliceX, curSliceY, nextSliceX, nextSliceY, oval, 1);
-////				Path slicePath = new Path();
-////				slicePath.moveTo(h, k);
-////				slicePath.lineTo(curSli`ceX, curSliceY);
-////				slicePath.addArc(oval, startAngle, 180);
-////				slicePath.lineTo(nextSliceX, nextSliceY);
-////				slicePath.close(); 
-////				paint.setColor(sliceColor[i]);
-////				canvas.drawPath(slicePath, paint);
-////				paint.setColor(Color.BLACK);
-//				
-////				canvas.drawO
-////					canvas.drawArc(new RectF(h-curSliceRadius,k+curSliceRadius,h+curSliceRadius,k-curSliceRadius),
-////							180, 0, true, paint);
-//
-//				curDegrees = nextDegrees;
-//				nextDegrees = curDegrees + angle;
-//				Log.d(TAG, "Degrees cur:next>> "+ curDegrees+":"+nextDegrees);
-//				
-//				i++;
-//			}
-            
-            
+            }         
         }
 
         @Override
@@ -1150,6 +1077,19 @@ public class PieChart extends ViewGroup {
         public int cSliceColor;
         
         public RectF cSliceBounds;
+        @Override
+        public boolean equals(Object obj){
+        	if (obj == null) return false;
+        	if (!(obj instanceof Item))return false;
+        	Item s = (Item) obj;
+        	if(s.mLabel.equals(mLabel))
+        		return true;
+        	return false;
+        }
+        @Override
+        public String toString(){
+        	return mLabel + " <" + cPercent + ">";
+        }
     }
 
     /**
